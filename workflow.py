@@ -1,4 +1,4 @@
-
+ 
 from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 from llm import llm
@@ -44,7 +44,7 @@ def planning_node(state: WorkflowState):
     return {"plan": response.content}
 
 
-# 3. Action node
+# 3. Action node - Validation
 def action_node(state: WorkflowState):
 
     print("\n[ACTION] Validating the generated plan...")
@@ -84,9 +84,6 @@ def action_node(state: WorkflowState):
 
 
 # 4. Evaluation node
-
-
- 
 def evaluation_node(state: WorkflowState):
 
     print("\n[EVALUATION] Evaluating project plan...")
@@ -120,12 +117,22 @@ def evaluation_node(state: WorkflowState):
     print("\nEvaluator response:")
     print(evaluation)
 
-    first_line = evaluation.splitlines()[0].strip().upper()
+    first_line = (
+        evaluation.splitlines()[0].strip().upper()
+        if evaluation.splitlines()
+        else ""
+    )
 
-    if first_line.startswith("APPROVED"):
-        status = "APPROVED"
-    else:
+    # TEMPORARY CONTROLLED FEEDBACK-LOOP TEST
+    if state["revision_count"] == 0:
+
         status = "NEEDS_REVISION"
+
+         
+    else:
+
+        status = "NEEDS_REVISION"
+        
 
     print("\nEvaluation status:", status)
 
@@ -166,19 +173,22 @@ def revision_node(state: WorkflowState):
 
 
 # 6. Decide whether to finish or revise
-
 def route_after_evaluation(state: WorkflowState):
 
     if state["status"] == "APPROVED":
+
         print("\n[COMPLETE] Project plan approved!")
         return "end"
 
     if state["revision_count"] >= state["max_revisions"]:
+
         print("\n[STOP] Maximum revision limit reached.")
         return "end"
 
     return "revise"
-# Build the LangGraph workflow
+
+
+# 7. Build the LangGraph workflow
 graph = StateGraph(WorkflowState)
 
 graph.add_node("plan", planning_node)
@@ -201,7 +211,8 @@ graph.add_conditional_edges(
 
 graph.add_edge("revise", "action")
 
-# Compile the workflow
+
+# 8. Compile the workflow
 agent = graph.compile()
 
 print("\nAgentic AI workflow compiled successfully!")
